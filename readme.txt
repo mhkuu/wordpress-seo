@@ -281,6 +281,7 @@ Release date: 2025-02-18
 #### Enhancements
 
 * Issues a warning message when the image automatically selected for a post social preview is in the unsupported AVIF format.
+* Test test test.
 
 #### Bugfixes
 

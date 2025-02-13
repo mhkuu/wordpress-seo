@@ -1,20 +1,43 @@
 name: Pull Request Validation
 
-on: pull_request
-
-env:
-  LABELS: ${{ join( github.event.pull_request.labels.*.name, ' ' ) }}
+on:
+  pull_request:
+    types: [opened, edited, synchronize, labeled, unlabeled, milestoned, demilestoned]
 
 jobs:
-  check-type-label:
-    name: Check changelog
+  validate-pr:
+    name: Validate PR Labels & Milestone
     runs-on: ubuntu-latest
     steps:
-      - if: contains( env.LABELS, 'changelog:' ) == false
-        run: exit 1
-  check-milestone:
-    name: Check milestone
-    runs-on: ubuntu-latest
-    steps:
-      - if: github.event.pull_request.milestone == null
-        run: exit 1
+      - name: Check for changelog label
+        id: changelog-check
+        run: |
+          LABELS="${{ join(github.event.pull_request.labels.*.name, ' ') }}"
+          if [[ "$LABELS" != *"changelog:"* ]]; then
+            echo "❌ Missing required changelog label!"
+            echo "changelog_status=failed" >> "$GITHUB_ENV"
+          else
+            echo "✅ Changelog label found."
+            echo "changelog_status=success" >> "$GITHUB_ENV"
+          fi
+
+      - name: Check for milestone
+        id: milestone-check
+        run: |
+          if [[ -z "${{ github.event.pull_request.milestone }}" ]]; then
+            echo "❌ Missing milestone!"
+            echo "milestone_status=failed" >> "$GITHUB_ENV"
+          else
+            echo "✅ Milestone assigned."
+            echo "milestone_status=success" >> "$GITHUB_ENV"
+          fi
+
+      - name: Final Validation
+        run: |
+          if [[ "$changelog_status" == "failed" || "$milestone_status" == "failed" ]]; then
+            echo "❌ PR is missing required attributes. Please add a milestone and a changelog label before merging."
+            exit 1
+          else
+            echo "✅ PR validation passed."
+          fi
+ 
